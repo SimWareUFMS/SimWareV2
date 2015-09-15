@@ -1,0 +1,36 @@
+﻿  main.cpp
+c:\users\marcos.moro\dropbox\doutorado ufms\simware\simware\simwarev2\main.cpp(442): warning C4390: ';' : empty controlled statement found; is this the intent?
+c:\program files\microsoft visual studio 10.0\vc\include\xutility(2227): warning C4996: 'std::_Copy_impl': Function call with parameters that may be unsafe - this call relies on the caller to check that the passed values are correct. To disable this warning, use -D_SCL_SECURE_NO_WARNINGS. See documentation on how to use Visual C++ 'Checked Iterators'
+          c:\program files\microsoft visual studio 10.0\vc\include\xutility(2212) : see declaration of 'std::_Copy_impl'
+          c:\boost_1_57_0\boost_1_57_0\boost\algorithm\string\detail\classification.hpp(102) : see reference to function template instantiation '_OutIt std::copy<const char*,char*>(_InIt,_InIt,_OutIt)' being compiled
+          with
+          [
+              _OutIt=char *,
+              _InIt=const char *
+          ]
+          c:\boost_1_57_0\boost_1_57_0\boost\algorithm\string\classification.hpp(206) : see reference to function template instantiation 'boost::algorithm::detail::is_any_ofF<CharT>::is_any_ofF<boost::iterator_range<IteratorT>>(const RangeT &)' being compiled
+          with
+          [
+              CharT=char,
+              IteratorT=const char *,
+              RangeT=boost::iterator_range<const char *>
+          ]
+          c:\users\marcos.moro\dropbox\doutorado ufms\simware\simware\simwarev2\main.cpp(287) : see reference to function template instantiation 'boost::algorithm::detail::is_any_ofF<CharT> boost::algorithm::is_any_of<const char[2]>(RangeT (&))' being compiled
+          with
+          [
+              CharT=char,
+              RangeT=const char [2]
+          ]
+  RoutinesTisean.cpp
+c:\users\marcos.moro\dropbox\doutorado ufms\simware\simware\simwarev2\routinestisean.cpp(28): fatal error C1083: Cannot open include file: 'tisean/tisean_cec.h': No such file or directory
+  ParametersPrediction.cpp
+c:\users\marcos.moro\dropbox\doutorado ufms\simware\simware\simwarev2\parametersprediction.cpp(28): fatal error C1083: Cannot open include file: 'tisean/tsa.h': No such file or directory
+  OptimizationAlgorithmServers.cpp
+  JobQueue.cpp
+  DataCenter.cpp
+c:\users\marcos.moro\dropbox\doutorado ufms\simware\simware\simwarev2\datacenter.cpp(470): warning C4018: '<' : signed/unsigned mismatch
+c:\users\marcos.moro\dropbox\doutorado ufms\simware\simware\simwarev2\datacenter.cpp(480): warning C4018: '<' : signed/unsigned mismatch
+c:\users\marcos.moro\dropbox\doutorado ufms\simware\simware\simwarev2\datacenter.cpp(758): warning C4018: '<' : signed/unsigned mismatch
+  AlgorithmPrediction.cpp
+c:\users\marcos.moro\dropbox\doutorado ufms\simware\simware\simwarev2\algorithmprediction.cpp(31): fatal error C1083: Cannot open include file: 'tisean/tsa.h': No such file or directory
+  Generating Code...
