@@ -75,23 +75,23 @@ DataCenter::DataCenter(JobQueue* q, ServersPOOL* Pool, Topology* topology)
 		pSchedulingAlgorithm = new MinHRSchedulingAlgorithm(&pServers, &qWaitingVMs, &HeatRecirculationMatrixD);
 	else if (SCHEDULING_ALGORITHM == "center_rack_first")
 		pSchedulingAlgorithm = new CenterRackFirstSchedulingAlgorithm(&pServers, &qWaitingVMs, &HeatRecirculationMatrixD);
-	else if (SCHEDULING_ALGORITHM == "2DA")
-		pSchedulingAlgorithm = new TwoDimensionVASchedulingAlgorithm(&pServers, &qWaitingVMs, &HeatRecirculationMatrixD, pPool); 
-	else if (SCHEDULING_ALGORITHM == "2DB")
-		pSchedulingAlgorithm = new TwoDimensionVBSchedulingAlgorithm(&pServers, &qWaitingVMs, &HeatRecirculationMatrixD); 
-	else if (SCHEDULING_ALGORITHM == "2DAPrediction")
-		pSchedulingAlgorithm = new TwoDimensionVAPredictionSchedulingAlgorithm(&pServers, &qWaitingVMs, &HeatRecirculationMatrixD, pPool, &currentSupplyTempBase);
-	else if (SCHEDULING_ALGORITHM == "2DCPrediction")
-		pSchedulingAlgorithm = new TwoDimensionVCPredictionSchedulingAlgorithm(&pServers, &qWaitingVMs, &HeatRecirculationMatrixD, &currentSupplyTempBase);
+	else if (SCHEDULING_ALGORITHM == "2D_POOL")
+		pSchedulingAlgorithm = new TwoDimensionWithPoolSchedulingAlgorithm(&pServers, &qWaitingVMs, &HeatRecirculationMatrixD, pPool); 
+	else if (SCHEDULING_ALGORITHM == "2D_POOL_AND_Prediction")
+		pSchedulingAlgorithm = new TwoDimensionWithPoolAndPredictionSchedulingAlgorithm(&pServers, &qWaitingVMs, &HeatRecirculationMatrixD, pPool);
+	else if (SCHEDULING_ALGORITHM == "2D_Prediction")
+		pSchedulingAlgorithm = new TwoDimensionWithPredictionSchedulingAlgorithm(&pServers, &qWaitingVMs, &HeatRecirculationMatrixD);
 	else {
 		cout << "Error: unknown scheduling algorithm. Use default value (best_performance)" << endl;
 		pSchedulingAlgorithm = new BestPerformanceSchedulingAlgorithm(&pServers, &qWaitingVMs, &HeatRecirculationMatrixD);
 	}
 
     // Policy Migration
-	policyOne = new PoliceLowUtilization(&pServers);
-	policyTwo = new PoliceHighTemperature(&pServers, HeatRecirculationMatrixD, pPool);
-	policyThree = new PoliceIdle(&pServers, pPool);
+	if (SIMULATES_MIGRATION_VMS) {
+	   policyOne = new PoliceLowUtilization(&pServers);
+	   policyTwo = new PoliceHighTemperature(&pServers, HeatRecirculationMatrixD, pPool);
+	   policyThree = new PoliceIdle(&pServers, pPool);
+	}
 
 	perDataCenterUtilization = 0.0;
 
@@ -111,8 +111,9 @@ DataCenter::DataCenter(JobQueue* q, ServersPOOL* Pool, Topology* topology)
 	//CRACDischargeAirTempChangeRate = 0.1;
 
     // Create Topology
-	pTopology->CreateTopology(&pServers);
-
+	if (SIMULATES_NETWORK) {
+	   pTopology->CreateTopology(&pServers);
+	}
 }
 
 
@@ -124,9 +125,11 @@ DataCenter::~DataCenter(void)
 
 	delete pSchedulingAlgorithm;
 
-	delete policyOne;
-	delete policyTwo;
-	delete policyThree;
+	if (SIMULATES_MIGRATION_VMS) {
+	   delete policyOne;
+	   delete policyTwo;
+	   delete policyThree;
+	}
 
     vTotalMigrationsPolicyOnSparseLog.clear();
 	vTotalMigrationsPolicyTwoSparseLog.clear();
@@ -144,7 +147,9 @@ void DataCenter::EveryASecond(void)
   double cpuLoad = 0.00;
   
   // updated simulation clock
-  pPool->UpdateClockSimulation(clock);
+  if (SIMULATES_POOL_SERVER) {
+	 pPool->UpdateClockSimulation(clock);
+  }
 
   // calculate variance
   if (!pJobQueue->IsFinished()) {
@@ -182,14 +187,15 @@ void DataCenter::EveryASecond(void)
 		}
   }
                                             
-  // calculates the server pool window
-/*  if ((clock%SUMVMARRIVALTIME==0) && (clock <= 329959)) { 
+/*  // calculates the server pool window
+  if ((clock%SUMVMARRIVALTIME==0) && (clock <= 329959)) { 
      pPool->insertWindowsSmallVMSArrived(totalSmallVMSArrived);
 	 pPool->insertWindowsMediumVMSArrived(totalMediumVMSArrived);
 	 pPool->insertWindowsBigVMSArrived(totalBigVMSArrived);
 	 totalSmallVMSArrived = 0; totalMediumVMSArrived = 0; totalBigVMSArrived = 0;
   }
-*/
+  */
+
   if (REASSIGN_VMS && (clock%16384==0)) { // re arranging
 	 for (int i=0; i<NUMBER_OF_CHASSIS; ++i) { 
       	 for (int j=0; j<NUMBER_OF_SERVERS_IN_ONE_CHASSIS; ++j) {
@@ -208,18 +214,19 @@ void DataCenter::EveryASecond(void)
   // Assign jobs to the servers
   pSchedulingAlgorithm->AssignVMs();
 
-  // Optimization of servers
 
-  if ((clock%120==0) && (clock!=0))  {
-	 vTotalMigrationPolicyOneLog += policyOne->OptimizationServers(clock);
-  }
+  // migration of VMs and Optimization of servers
 
-  if ((clock%60==0) && (clock!=0))  {
-	 vTotalMigrationPolicyTwoLog += policyTwo->OptimizationServers(clock);
-  }
-
-  if ((clock%120==0) && (clock!=0)) {
-	 vTotalMigrationPolicyThreeLog += policyThree->OptimizationServers(clock);
+  if (SIMULATES_MIGRATION_VMS) {
+     if ((clock%120==0) && (clock!=0))  {
+	    vTotalMigrationPolicyOneLog += policyOne->OptimizationServers(clock);
+     }
+     if ((clock%60==0) && (clock!=0))  {
+	    vTotalMigrationPolicyTwoLog += policyTwo->OptimizationServers(clock);
+     }
+     if ((clock%120==0) && (clock!=0)) {
+	    vTotalMigrationPolicyThreeLog += policyThree->OptimizationServers(clock);
+     }
   }
 
   // call EveryASecond to every server instance
@@ -238,14 +245,18 @@ void DataCenter::EveryASecond(void)
   // verifies that the servers power off
   // verifies that the servers power on
   
-  pPool->EveryASecond(&pServers);
+  if (SIMULATES_POOL_SERVER) {
+	 pPool->EveryASecond(&pServers);
+  }
 
   // increases the clock simulator
   ++clock;
 
 
   // Calculates the energy consumption of switches and optimizes network topology
-  pTopology->EveryASecond(clock);
+  if (SIMULATES_NETWORK) {
+      pTopology->EveryASecond(clock);
+  }
 
   RecalculateHeatDistribution();
 

@@ -26,6 +26,7 @@ void RandomSchedulingAlgorithm::AssignVMs()
 		if (bestI < 0 || bestJ < 0 || bestI > NUMBER_OF_CHASSIS || bestJ > NUMBER_OF_SERVERS_IN_ONE_CHASSIS)
 			cout << "Error: No servers to assign a VM" << endl;
 		(*ppServers)[bestI][bestJ]->AssignOneVM(pqVMsToGo->front());
+		totalScheduling += 1;
 		pqVMsToGo->pop();
 	}
 }
@@ -89,6 +90,7 @@ void LowTemperatureFirstSchedulingAlgorithm::AssignVMs()
 			besttJ = rand()%NUMBER_OF_SERVERS_IN_ONE_CHASSIS;
 		}
 		(*ppServers)[besttI][besttJ]->AssignOneVM(pqVMsToGo->front());
+		totalScheduling += 1;
 		pqVMsToGo->pop();
 	}
 }
@@ -122,6 +124,7 @@ void UniformTaskSchedulingAlgorithm::AssignVMs()
 		if (bestI < 0 || bestJ < 0)
 			cout << "Error: No servers to assign a VM" << endl;
 		(*ppServers)[bestI][bestJ]->AssignOneVM(pqVMsToGo->front());
+		totalScheduling += 1;
 		pqVMsToGo->pop();
 	}
 }
@@ -157,6 +160,7 @@ void BestPerformanceSchedulingAlgorithm::AssignVMs()
 		if (bestI < 0 || bestJ < 0)
 			cout << "Error: No servers to assign a VM" << endl;
 		(*ppServers)[bestI][bestJ]->AssignOneVM(pqVMsToGo->front());
+		totalScheduling += 1;
 		pqVMsToGo->pop();
 	}
 
@@ -229,6 +233,7 @@ void MinHRSchedulingAlgorithm::AssignVMs()
 		bestJ = rand()%NUMBER_OF_SERVERS_IN_ONE_CHASSIS;
 ASSIGNING_FINISHED:
 		(*ppServers)[bestI][bestJ]->AssignOneVM(pqVMsToGo->front());
+		totalScheduling += 1;
 		pqVMsToGo->pop();
 	}
 }
@@ -252,15 +257,18 @@ void XintSchedulingAlgorithm::AssignVMs()
 			for (int j=0; j<NUMBER_OF_SERVERS_IN_ONE_CHASSIS; ++j) {
 				if ((*ppServers)[i][j]->IsOFF()) continue;
 				(*ppServers)[i][j]->AssignOneVM(pqVMsToGo->front()); // temporarilly assign to i,j
+				totalScheduling += 1;
 				FLOATINGPOINT local_thishastobemin = GetHighestTemperatureIncrease();
 				if (thishastobemin > local_thishastobemin) {
 					bestI = i; bestJ = j;
 					thishastobemin = local_thishastobemin;
 				}
 				(*ppServers)[i][j]->RemoveTheLastAssignedVM(); // de-assign after calculating hr effect
+				totalScheduling -= 1;
 			}
 		}
 		(*ppServers)[bestI][bestJ]->AssignOneVM(pqVMsToGo->front());
+		totalScheduling += 1;
 		pqVMsToGo->pop();
 	}
 }
@@ -356,12 +364,13 @@ void CenterRackFirstSchedulingAlgorithm::AssignVMs()
 		bestJ = rand()%NUMBER_OF_SERVERS_IN_ONE_CHASSIS;
 ASSIGNING_FINISHED:
 		(*ppServers)[bestI][bestJ]->AssignOneVM(pqVMsToGo->front());
+		totalScheduling += 1;
 		pqVMsToGo->pop();
 	}
 }
 
 
-TwoDimensionVASchedulingAlgorithm::TwoDimensionVASchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX], ServersPOOL* ppool)
+TwoDimensionWithPoolSchedulingAlgorithm::TwoDimensionWithPoolSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX], ServersPOOL* ppool)
 {
 	ppServers = ps;
 	pqVMsToGo = pqvm;
@@ -378,18 +387,16 @@ TwoDimensionVASchedulingAlgorithm::TwoDimensionVASchedulingAlgorithm(Server* (*p
 	}
 }
 
-
      
-void TwoDimensionVASchedulingAlgorithm::AssignVMs()
+void TwoDimensionWithPoolSchedulingAlgorithm::AssignVMs()
 {
-  int k = 0; 
-  int sumRemovePOOL = 0; 
-  int full = 0;
   POOL sv;
-
-
   SORTSERVER serverScheduling[CHASSIxSERVER];
 
+  int k = 0; 
+  int RemovePOOL = 0; 
+  int full = 0;
+ 
   if (!pqVMsToGo->empty()) {
      for (int i=0; i<NUMBER_OF_CHASSIS; ++i) {
 	     for (int j=0; j<NUMBER_OF_SERVERS_IN_ONE_CHASSIS; ++j) {
@@ -401,7 +408,7 @@ void TwoDimensionVASchedulingAlgorithm::AssignVMs()
 		     serverScheduling[k].temperature = (*ppServers)[i][j]->CurrentInletTemperature();
 			 serverScheduling[k].temperatureFuture = 0.0;
 		     serverScheduling[k].utilizationCPU = (*ppServers)[i][j]->VMRequiresThisMuchUtilization();
-			 serverScheduling[k].ranking = (0.40*(serverScheduling[k].temperature/32)) + (0,10*(HRF[i]/0,001)) + (0,50*(serverScheduling[k].utilizationCPU));
+			 serverScheduling[k].ranking = (0.40*(serverScheduling[k].temperature/32)) + (0.10*(HRF[i]/0.001)) + (0.50*(serverScheduling[k].utilizationCPU));
 		     serverScheduling[k].assignVM = false;
 		     k++;
 	     }
@@ -414,13 +421,14 @@ void TwoDimensionVASchedulingAlgorithm::AssignVMs()
 	    full = 0;
         for (int l=0; l < k; ++l) {
             if (!pqVMsToGo->empty()) {
-			   if ((serverScheduling[l].utilizationCPU + (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER)) < 0.90) {
+			   if (((serverScheduling[l].utilizationCPU + (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER)) <= 0.90) && (serverScheduling[l].temperature <= (EMERGENCY_TEMPERATURE - 0.5)))  {
 			      serverScheduling[l].utilizationCPU += (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER);
 			      (*ppServers)[serverScheduling[l].chassi][serverScheduling[l].server]->AssignOneVM(pqVMsToGo->front());
+				  totalScheduling += 1;
 			      pqVMsToGo->pop();
 		       }
 			   else {
-                  if (serverScheduling[l].utilizationCPU + (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER) >= .90) {
+                  if ((serverScheduling[l].utilizationCPU + (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER) > 0.90) || (serverScheduling[l].temperature > (EMERGENCY_TEMPERATURE - 0.5))) {
 			         full++;
 			      }
 			      continue;
@@ -438,11 +446,12 @@ void TwoDimensionVASchedulingAlgorithm::AssignVMs()
 		      serverScheduling[k].temperature = (*ppServers)[sv.chassi][sv.server]->CurrentInletTemperature();
 		      serverScheduling[k].utilizationCPU = (*ppServers)[sv.chassi][sv.server]->VMRequiresThisMuchUtilization();
 		      serverScheduling[k].temperatureFuture = 0;
-    	      serverScheduling[k].ranking = (0.40*(serverScheduling[k].temperature/32)) + (0,10*(HRF[sv.chassi]/0,001)) + (0,50*(serverScheduling[k].utilizationCPU));
+    	      serverScheduling[k].ranking = (0.40*(serverScheduling[k].temperature/32)) + (0.10*(HRF[sv.chassi]/0.001)) + (0.50*(serverScheduling[k].utilizationCPU));
 		      (*ppServers)[serverScheduling[k].chassi][serverScheduling[k].server]->AssignOneVM(pqVMsToGo->front());
+			  totalScheduling += 1;
 		      pqVMsToGo->pop();
 		      k++;
-		      sumRemovePOOL++;
+		      RemovePOOL++;
 		      full = 0;
 		   }
 		   else{
@@ -451,15 +460,12 @@ void TwoDimensionVASchedulingAlgorithm::AssignVMs()
 		   }
 		}
   }
- 
-  if (sumRemovePOOL > 0) {
-	  ppollServers->ServerPowerON(ppServers, sumRemovePOOL);
+   if (RemovePOOL > 0) {
+	 ppollServers->ServerPowerON(ppServers, RemovePOOL);
   }
- 
 }
 
-
-TwoDimensionVAPredictionSchedulingAlgorithm::TwoDimensionVAPredictionSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX], ServersPOOL* ppool, FLOATINGPOINT* tempArcondicionado)
+TwoDimensionWithPoolAndPredictionSchedulingAlgorithm::TwoDimensionWithPoolAndPredictionSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX], ServersPOOL* ppool)
 {
 	ppServers = ps;
 	pqVMsToGo = pqvm;
@@ -467,7 +473,6 @@ TwoDimensionVAPredictionSchedulingAlgorithm::TwoDimensionVAPredictionSchedulingA
 	ppollServers = ppool;
 	totalScheduling = 0;
 	PREDICITIONSHEDULER = true;
-	temp = tempArcondicionado;
 
 	for (int i=0; i<SIZE_OF_HR_MATRIX; ++i) {
 		HRF[i] = 0.0;
@@ -476,16 +481,15 @@ TwoDimensionVAPredictionSchedulingAlgorithm::TwoDimensionVAPredictionSchedulingA
 		}
 	}
 }
-void TwoDimensionVAPredictionSchedulingAlgorithm::AssignVMs()
+void TwoDimensionWithPoolAndPredictionSchedulingAlgorithm::AssignVMs()
 {
   SORTSERVER serverScheduling[CHASSIxSERVER];
   vector<double> predictionTemp;
-  vector<FLOATINGPOINT> vectorTemporary;
   POOL sv;
 
   int k = 0; 
-  int sumRemovePOOL = 0; 
-  int iServer = 0; int full = 0;
+  int RemovePOOL = 0; 
+  int full = 0;
     
   if (!pqVMsToGo->empty()) {
      for (int i=0; i<NUMBER_OF_CHASSIS; ++i) {
@@ -552,15 +556,14 @@ void TwoDimensionVAPredictionSchedulingAlgorithm::AssignVMs()
 	    full = 0;
         for(int i=0; i < k; i++) {
            if (!pqVMsToGo->empty()) {
-			  if (((serverScheduling[i].utilizationCPU + (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER)) <= 0.90) && (serverScheduling[i].temperature <= 29))  {
-			     //cout << "Servidor " << serverScheduling[i].chassi << " " << serverScheduling[i].server << " recebeu uma VM com " << (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER) << " %CPU" << " Temperatura " << (*ppServers)[serverScheduling[i].chassi][serverScheduling[i].server]->CurrentInletTemperature() << " Score " << serverScheduling[i].ranking << endl;
-    		     serverScheduling[i].utilizationCPU += (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER);
+			  if (((serverScheduling[i].utilizationCPU + (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER)) <= 0.90) && (serverScheduling[i].temperature <= (EMERGENCY_TEMPERATURE - 0.5)))  {
+   		         serverScheduling[i].utilizationCPU += (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER);
 			     (*ppServers)[serverScheduling[i].chassi][serverScheduling[i].server]->AssignOneVM(pqVMsToGo->front());
 				 totalScheduling += 1;
 			     pqVMsToGo->pop();
 		      }
 			  else {
-                 if ((serverScheduling[i].utilizationCPU + (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER) > 0.90) || (serverScheduling[i].temperature > 29)) {
+                 if ((serverScheduling[i].utilizationCPU + (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER) > 0.90) || (serverScheduling[i].temperature > (EMERGENCY_TEMPERATURE - 0.5))) {
 					full++;
 				 }
 				 continue;
@@ -584,7 +587,7 @@ void TwoDimensionVAPredictionSchedulingAlgorithm::AssignVMs()
 		      pqVMsToGo->pop();
 		      //cout << "Moveu do POOL Servidor " << serverScheduling[k].chassi << " " << serverScheduling[k].server << " Temperatura " << serverScheduling[k].temperature << " CPU " << serverScheduling[k].utilizationCPU << " ranking " << serverScheduling[k].ranking << endl;
 		      k++;
-		      sumRemovePOOL++;
+		      RemovePOOL++;
 		      full = 0;
 		   }
 		   else{
@@ -594,155 +597,22 @@ void TwoDimensionVAPredictionSchedulingAlgorithm::AssignVMs()
 		}
   }
  
-  if (sumRemovePOOL > 0) {
-	  ppollServers->ServerPowerON(ppServers, sumRemovePOOL);
+  if (RemovePOOL > 0) {
+	  ppollServers->ServerPowerON(ppServers, RemovePOOL);
   }
-
   predictionTemp.clear();
-  vectorTemporary.clear();
-
-/*  
-// VERSÃO B
-  iServer = 0;
-
-  while (!pqVMsToGo->empty())  {
-	    if (((serverScheduling[iServer].utilizationCPU + pqVMsToGo->front()->GetCPULoadRatio()) <= NUMBER_OF_CORES_IN_ONE_SERVER)) {
- 		   serverScheduling[iServer].utilizationCPU += pqVMsToGo->front()->GetCPULoadRatio();
-		   (*ppServers)[serverScheduling[iServer].posi][serverScheduling[iServer].posj]->AssignOneVM(pqVMsToGo->front());
-		   pqVMsToGo->pop();
-		   continue;
-		}
-		else {
-		   iServer += 1;
-		   if ( (iServer > k-1) && (!pqVMsToGo->empty()) ) {
-		      sv = ppollServers->RemoveServerPOOL(ppServers);
-
-			  serverScheduling[k].posi = sv.chassi;
-		      serverScheduling[k].posj = sv.server;
-		      serverScheduling[k].temperature = (*ppServers)[sv.chassi][sv.server]->CurrentInletTemperature();
-		      serverScheduling[k].utilizationCPU = (*ppServers)[sv.chassi][sv.server]->VMRequiresThisMuchCPUScale();
-		      serverScheduling[k].temperatureFuture = 0;
-    	      serverScheduling[k].ranking = (0.40*(serverScheduling[k].temperature/32)) + (0,10*(HRF[sv.chassi]/0,001)) + (0,50*(serverScheduling[k].utilizationCPU/NUMBER_OF_CORES_IN_ONE_SERVER));
-		      (*ppServers)[serverScheduling[k].posi][serverScheduling[k].posj]->AssignOneVM(pqVMsToGo->front());
-		      pqVMsToGo->pop();
-		      //cout << "Moveu do POOL Servidor " << serverScheduling[k].posi << " " << serverScheduling[k].posj << " Temperatura " << serverScheduling[k].temperature << " CPU " << serverScheduling[k].utilizationCPU << " ranking " << serverScheduling[k].ranking << endl;
-		      k++;
-		      sumRemovePOOL++;
-			  continue;
-		   }
-		   else {
-			  continue;
-		   }
-	    }
-  }
-  
-  if (sumRemovePOOL > 0) {
-	  //cout << "ligar " << sumRemovePOOL << " Servidores " << endl;
-	  ppollServers->ServerPowerON(ppServers, sumRemovePOOL);
-  }*/
-}
-
-
-TwoDimensionVBSchedulingAlgorithm::TwoDimensionVBSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX])
-{
-	ppServers = ps;
-	pqVMsToGo = pqvm;
-	pHeatRecirculationMatrixD = matrixD;
-
-	PREDICITIONSHEDULER = false;
-
-	for (int i=0; i<SIZE_OF_HR_MATRIX; ++i) {
-		HRF[i] = 0.0;
-		for (int j=0; j<SIZE_OF_HR_MATRIX; ++j) {
-			HRF[i] += (*pHeatRecirculationMatrixD)[j][i];
-		}
-	}
-}
-
-void TwoDimensionVBSchedulingAlgorithm::AssignVMs()
-{
-  int k = 0;
-  bool scheduling = false;
-  double averageTemp = 0;
-
-  SORTSERVER serverScheduling[CHASSIxSERVER];  
-
-  if (!pqVMsToGo->empty()) {
-     for (int i=0; i<NUMBER_OF_CHASSIS; ++i) {
-	     for (int j=0; j<NUMBER_OF_SERVERS_IN_ONE_CHASSIS; ++j) {
-	         if ( ((*ppServers)[i][j]->IsOFF()) || ((*ppServers)[i][j]->IsPOOL()) || ((*ppServers)[i][j]->IsMIGRATING()) || ((*ppServers)[i][j]->IsINITIALIZING())) { 	 
-		 	    continue;
-		     }
-		     serverScheduling[k].chassi = i;
-		     serverScheduling[k].server = j;
-		     serverScheduling[k].temperature = (*ppServers)[i][j]->CurrentInletTemperature();
-			 serverScheduling[k].temperatureFuture = 0.0;
-		     serverScheduling[k].utilizationCPU = (*ppServers)[i][j]->VMRequiresThisMuchCPUScale();
-		     serverScheduling[k].ranking = (0.30*(serverScheduling[k].temperature/35)) + (0.20*(HRF[i]/0,01)) + (0.50*(serverScheduling[k].utilizationCPU/10));
-		     serverScheduling[k].assignVM = false;
-		     k++;
-	     }
-     }
-     quickSort(serverScheduling, 0, k-1);
-	 averageTemp = (serverScheduling[0].temperature+serverScheduling[k-1].temperature) / 2;
-  } 
-
-ASSIGNING_VMS:
-  // assign VMs to Servers 1º Round
-  while (!pqVMsToGo->empty()) {
-        scheduling = false;
-        for (int i=0; i < k; i++) {
-     	   if (((serverScheduling[i].utilizationCPU + pqVMsToGo->front()->GetCPULoadRatio()) <= NUMBER_OF_CORES_IN_ONE_SERVER) && (serverScheduling[i].assignVM == false) && (serverScheduling[i].temperature <= averageTemp)) {
-    		   serverScheduling[i].utilizationCPU += pqVMsToGo->front()->GetCPULoadRatio();
-			   serverScheduling[i].assignVM = true;
-			  (*ppServers)[serverScheduling[i].chassi][serverScheduling[i].server]->AssignOneVM(pqVMsToGo->front());
-			  pqVMsToGo->pop();
-			  scheduling = true;
-			  break;
-			}
-		}
-		if (scheduling == false) {      // assign VMs to Servers 2º Round
-		   int ii = 0;
-		   while (!pqVMsToGo->empty()) {
-			     if (ii <= k-1) {
-			        if (((serverScheduling[ii].utilizationCPU + pqVMsToGo->front()->GetCPULoadRatio()) <= NUMBER_OF_CORES_IN_ONE_SERVER)) {
-                 	   serverScheduling[ii].utilizationCPU += pqVMsToGo->front()->GetCPULoadRatio();
-					   (*ppServers)[serverScheduling[ii].chassi][serverScheduling[ii].server]->AssignOneVM(pqVMsToGo->front());
-			           pqVMsToGo->pop();
-			           ii++;
-					   continue;
-					} 
-					else {
-					   ii++;
-					   continue;
-					}
-				}
-		        else {
-					if (!pqVMsToGo->empty()) {
-	   				   for (int i=0; i < k; i++) {
-					       serverScheduling[i].assignVM = false;
-					   }
-					   goto ASSIGNING_VMS;
-				    }
-		       }
-	      }
-       }
-   }
 }
 
 
 
-
-TwoDimensionVCPredictionSchedulingAlgorithm::TwoDimensionVCPredictionSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX], FLOATINGPOINT* tempArcondicionado)
+TwoDimensionWithPredictionSchedulingAlgorithm::TwoDimensionWithPredictionSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX])
 {
 	ppServers = ps;
 	pqVMsToGo = pqvm;
 	pHeatRecirculationMatrixD = matrixD;
 	totalScheduling = 0;
 	PREDICITIONSHEDULER = true;
-	temp = tempArcondicionado;
-
-
+	
 	for (int i=0; i<SIZE_OF_HR_MATRIX; ++i) {
 		HRF[i] = 0.0;
 		for (int j=0; j<SIZE_OF_HR_MATRIX; ++j) {
@@ -750,16 +620,12 @@ TwoDimensionVCPredictionSchedulingAlgorithm::TwoDimensionVCPredictionSchedulingA
 		}
 	}
 }
-void TwoDimensionVCPredictionSchedulingAlgorithm::AssignVMs()
+void TwoDimensionWithPredictionSchedulingAlgorithm::AssignVMs()
 {
   SORTSERVER serverScheduling[CHASSIxSERVER];
   vector<double> predictionTemp;
-  vector<FLOATINGPOINT> vectorTemporary;
   
-
   int k = 0; 
-  int sumRemovePOOL = 0; 
-  int iServer = 0; int full = 0;
     
   if (!pqVMsToGo->empty()) {
      for (int i=0; i<NUMBER_OF_CHASSIS; ++i) {
@@ -772,7 +638,7 @@ void TwoDimensionVCPredictionSchedulingAlgorithm::AssignVMs()
 		     serverScheduling[k].temperature = (*ppServers)[i][j]->CurrentInletTemperature();
 			 serverScheduling[k].utilizationCPU = (*ppServers)[i][j]->VMRequiresThisMuchUtilization();
 
-  		     if ((*ppServers)[i][j]->returnSizeVectorTemperature() == SIZEWINDOWNPREDICTION) {
+			 if ((*ppServers)[i][j]->returnSizeVectorTemperature() == SIZEWINDOWNPREDICTION) {
 				predictionTemp = runPolynom( (*ppServers)[i][j]->returnVectorTemperature() );  // run prediction 
 			 	if (!predictionTemp.empty()) {
 		           if ( predictionTemp[CLENGTH-1] >= 10 && predictionTemp[CLENGTH-1] <= 32) {
@@ -793,7 +659,6 @@ void TwoDimensionVCPredictionSchedulingAlgorithm::AssignVMs()
 					     serverScheduling[k].temperatureFuture = (*ppServers)[i][j]->CurrentInletTemperature();
 				      }
 				  }
-				   // cout << " Sever " << serverScheduling[k].chassi << " " << serverScheduling[k].server << "  Temp Futu " << 0.40*(serverScheduling[k].temperatureFuture/32) << " Recirc " << 0.10*(HRF[i]/0.001) << " CPU " << 0.50*(serverScheduling[k].utilizationCPU) << endl;
 				  serverScheduling[k].ranking = (0.40*(serverScheduling[k].temperatureFuture/32)) + (0.10*(HRF[i]/0.001)) + (0.50*(serverScheduling[k].utilizationCPU));
 				}
 				predictionTemp.erase(predictionTemp.begin(), predictionTemp.end());
@@ -801,24 +666,21 @@ void TwoDimensionVCPredictionSchedulingAlgorithm::AssignVMs()
 			 else {
 				serverScheduling[k].temperatureFuture = 0;
      	        serverScheduling[k].ranking = (0.40*(serverScheduling[k].temperature/32)) + (0.10*(HRF[i]/0.001)) + (0.50*(serverScheduling[k].utilizationCPU));
- 			    // cout << " Sever " << serverScheduling[k].chassi << " " << serverScheduling[k].server << "  Temp " << 0.40*(serverScheduling[k].temperature/32) << " Recirc " << 0.10*(HRF[i]/0.001) << " CPU " << 0.50*(serverScheduling[k].utilizationCPU) << endl;
-			 }	 
+ 			 }	 
     	     k++;
 	     }
      }
      quickSort(serverScheduling, 0, k-1);
   } 
-
-
+  
   // assign VMs to Servers
   while (!pqVMsToGo->empty())  {
         for(int i=0; i < k; i++) {
            if (!pqVMsToGo->empty()) {
-			  if (((serverScheduling[i].utilizationCPU + (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER)) <= 0.90) && (serverScheduling[i].temperature <= 29) && (serverScheduling[i].temperatureFuture <= 29)) {
-				  //cout << " VM escalonada " << (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER) << " Server " <<  serverScheduling[i].chassi << " " << serverScheduling[i].server << " Temp " << serverScheduling[i].temperature << endl;
-    		     serverScheduling[i].utilizationCPU += (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER);
+			  if (((serverScheduling[i].utilizationCPU + (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER)) <= 0.90) && (serverScheduling[i].temperature <= (EMERGENCY_TEMPERATURE - 0.5))) {
+   		         serverScheduling[i].utilizationCPU += (pqVMsToGo->front()->GetCPULoadRatio()/NUMBER_OF_CORES_IN_ONE_SERVER);
 			     (*ppServers)[serverScheduling[i].chassi][serverScheduling[i].server]->AssignOneVM(pqVMsToGo->front());
-			     pqVMsToGo->pop();
+				 pqVMsToGo->pop();
 				 totalScheduling += 1;
 		      }
 			  else {
@@ -830,8 +692,5 @@ void TwoDimensionVCPredictionSchedulingAlgorithm::AssignVMs()
 		   }
 		}
   }
- 
   predictionTemp.clear();
-  vectorTemporary.clear();
-
 }

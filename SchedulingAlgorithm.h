@@ -105,10 +105,10 @@ private:
 
 };
 
-class TwoDimensionVASchedulingAlgorithm : public SchedulingAlgorithm
+class TwoDimensionWithPoolSchedulingAlgorithm : public SchedulingAlgorithm
 {
 public:
-	TwoDimensionVASchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX], ServersPOOL* ppool);
+	TwoDimensionWithPoolSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX], ServersPOOL* ppool);
 	void AssignVMs();
 	int returnTotalScheduling(void) { return totalScheduling; }
 
@@ -116,37 +116,23 @@ private:
 	FLOATINGPOINT HRF[SIZE_OF_HR_MATRIX];
 };
 
-class TwoDimensionVBSchedulingAlgorithm : public SchedulingAlgorithm
+class TwoDimensionWithPoolAndPredictionSchedulingAlgorithm : public SchedulingAlgorithm
 {
 public:
-	TwoDimensionVBSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX]);
+	TwoDimensionWithPoolAndPredictionSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX], ServersPOOL* ppool);
 	void AssignVMs();
 	int returnTotalScheduling(void) { return totalScheduling; }
-
 private:
 	FLOATINGPOINT HRF[SIZE_OF_HR_MATRIX];
 };
 
 
-class TwoDimensionVAPredictionSchedulingAlgorithm : public SchedulingAlgorithm
+class TwoDimensionWithPredictionSchedulingAlgorithm : public SchedulingAlgorithm
 {
 public:
-	TwoDimensionVAPredictionSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX], ServersPOOL* ppool, FLOATINGPOINT* tempArcondicionado);
+	TwoDimensionWithPredictionSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX]);
 	void AssignVMs();
 	int returnTotalScheduling(void) { return totalScheduling; }
 private:
 	FLOATINGPOINT HRF[SIZE_OF_HR_MATRIX];
-	FLOATINGPOINT* temp;
-};
-
-
-class TwoDimensionVCPredictionSchedulingAlgorithm : public SchedulingAlgorithm
-{
-public:
-	TwoDimensionVCPredictionSchedulingAlgorithm(Server* (*ps)[SIZE_OF_HR_MATRIX][NUMBER_OF_SERVERS_IN_ONE_HR_MATRIX_CELL_MAX], queue<VirtualMachine*>* pqvm, const FLOATINGPOINT (*matrixD)[SIZE_OF_HR_MATRIX][SIZE_OF_HR_MATRIX], FLOATINGPOINT* tempArcondicionado);
-	void AssignVMs();
-	int returnTotalScheduling(void) { return totalScheduling; }
-private:
-	FLOATINGPOINT HRF[SIZE_OF_HR_MATRIX];
-	FLOATINGPOINT* temp;
 };

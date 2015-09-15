@@ -35,7 +35,7 @@ long int TOTAL_OF_MEMORY_IN_ONE_SERVER = 16000000;   // in kbytes
 int PERIODIC_LOG_INTERVAL = 86400; // in seconds. shorter interval requires more memory space
 int SKIP_x_SECONDS = 0; // skip first ? seconds
 int FINISHES_AT_DAY = 0; // stop simulator at day FINISHES_AT_DAY
-string SCHEDULING_ALGORITHM = "2DAPrediction";
+string SCHEDULING_ALGORITHM = "2D_POOL";
 int SUPPLY_TEMPERATURE_OFFSET_ALPHA = 0; // T_trigger = T_emergency + alpha
 int CRAC_SUPPLY_TEMP_IS_CONSTANT_AT = 0; // 0 = false, use dynamic crac control
 bool INSTANT_COOL_AIR_TRAVEL_TIME = false; // true = cool air from CRAC arrives instantly to the servers
@@ -43,6 +43,11 @@ bool CONSTANT_FAN_POWER = false; // true = fan rpm is constant at max
 bool INSTANT_CHANGE_CRAC_SUPPLY_AIR = false; // true = CRAC changes discharge air temperature instantly (e.g., from 10C to 15C or 
 int CRAC_DISCHARGE_CHANGE_RATE_0_00x = 10;
 bool FAN_RPM_NO_LIMIT = false; // false = Fan's max rpm to set at 3000, use true for SUPPLY_TEMPERATURE_OFFSET_ALPHA >= 0
+
+
+bool SIMULATES_MIGRATION_VMS = true;
+bool SIMULATES_NETWORK = true;
+bool SIMULATES_POOL_SERVER = true;
 
 int TRANSFER_TIME_VMS = 60; // transfer time between VMs
 int POWER_ON = 120; // time to power on a server
@@ -309,6 +314,10 @@ bool ParsingArguments(int argc, char* argv[])
 	}
 
 	cout << endl;
+	
+    cout << "-SIMULATES_MIGRATION_VMS : " << SIMULATES_MIGRATION_VMS << endl;
+	cout << "-SIMULATES_NETWORK : " << SIMULATES_NETWORK << endl;
+	cout << "-SIMULATES_POOL_SERVER : " << SIMULATES_POOL_SERVER << endl;
 	cout << "-NUMBER_de_CHASSIS : " << NUMBER_OF_CHASSIS << endl;
 	cout << "-NUMBER_OF_SERVERS_IN_ONE_CHASSIS : " << NUMBER_OF_SERVERS_IN_ONE_CHASSIS << endl;
 	cout << "-NUMBER_OF_CORES_IN_ONE_SERVER : " << NUMBER_OF_CORES_IN_ONE_SERVER << endl;
@@ -341,12 +350,12 @@ bool ParsingArguments(int argc, char* argv[])
 	cout << "-STEP : " << STEP << endl;
 	cout << "-CENTER : " << CENTER << endl;
 	cout << "-COLUMN : " << STEP << endl;
-	cout << "-LENGTH : " << LENGTH << endl;
+	//cout << "-LENGTH : " << LENGTH << endl;
 	cout << "-CLENGTH : " << CLENGTH << endl;
-	cout << "-MAKECAST : " << MAKECAST << endl;
+	//cout << "-MAKECAST : " << MAKECAST << endl;
 
 	cout << "-N : " << N << endl;
-	cout << "-CAST : " << CAST << endl;
+	//cout << "-CAST : " << CAST << endl;
 
 
 #ifdef _DEBUG
@@ -512,9 +521,8 @@ REMOVE_EMPTY_ELEMENT:
 
 int main(int argc, char* argv[])
 {
-
 	// arguments
-	cout << "SimWare v2.0" << endl;
+	cout << "SimWare v2.1" << endl;
 
 	for(int i = 0; i < argc; i++)
 		cout << argv[i] << " ";
